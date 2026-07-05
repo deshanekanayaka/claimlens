@@ -7,6 +7,24 @@ AI-powered damage claim triage. Upload photos and a claim description; a three-c
 Built on the claim-verification pipeline from the [HackerRank Orchestrate hackathon](https://github.com/deshanekanayaka/hackerrank-orchestrate-june26) (June 2026, ranked #234 of 1,773), refactored from a batch CSV script into a full product backend.
 
 ---
+## Tech stack
+
+**Backend**
+- Python, FastAPI, Pydantic
+- Anthropic SDK (`claude-opus-4-6` for reasoning calls, `claude-sonnet-4-6` for image analysis)
+- SQLite (WAL mode) for claims and append-only stage events
+- Pillow for image format handling (AVIF transcoding, magic-byte sniffing)
+- pytest for the test suite
+
+**Frontend**
+- Next.js 15 (App Router), TypeScript
+- Tailwind CSS v4
+- Server-sent events (native `EventSource`) for live pipeline progress, no client library
+
+**Infrastructure / tooling**
+- Background task execution via Starlette's threadpool (no queue broker)
+- Server-sent events for real-time updates (no WebSockets)
+- Git, GitHub
 
 ## How it works
 
