@@ -1,0 +1,124 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+@theme {
+  /* Palette: claims-desk ledger */
+  --color-ledger: #f6f5f0;      /* paper background */
+  --color-sheet: #fffefb;       /* card surface */
+  --color-white-warm: #fffefb;  /* stamp backing plate */
+  --color-ink: #1f2421;         /* primary text */
+  --color-ink-soft: #5c635e;    /* secondary text */
+  --color-rule: #d8d6cc;        /* hairline borders */
+  --color-form-blue: #2b4c8c;   /* interactive / carbon-copy form blue */
+  --color-form-blue-deep: #1f3865;
+  --color-verdict-green: #1f7a4d;
+  --color-verdict-red: #a83527;
+  --color-verdict-amber: #a06a00;
+
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-condensed: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+}
+
+body {
+  background-color: var(--color-ledger);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Form-section heading: condensed, uppercase, ruled — like a claim form field group */
+.form-heading {
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  color: var(--color-ink-soft);
+  border-bottom: 1px solid var(--color-rule);
+  padding-bottom: 0.4rem;
+}
+
+/* The verdict stamp — double border with roughened filter */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 3px double currentColor;
+  padding: 0.55em 1.1em;
+  border-radius: 6px;
+  position: relative;
+  opacity: 0.92;
+  filter: url(#stamp-rough);
+}
+
+/* Grain utility — subtle paper noise */
+@utility grain {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: multiply;
+    background-image: radial-gradient(rgba(31, 36, 33, 0.05) 1px, transparent 1px),
+      radial-gradient(rgba(31, 36, 33, 0.04) 1px, transparent 1px);
+    background-size: 3px 3px, 7px 7px;
+    background-position: 0 0, 1px 2px;
+  }
+}
+
+/* Ruled utility — faint horizontal rules */
+@utility ruled {
+  background-image: linear-gradient(to bottom, var(--color-rule) 1px, transparent 1px);
+  background-size: 100% 32px;
+  background-position: 0 8px;
+}
+
+/* Monospace risk-flag chip */
+@utility flag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--color-rule);
+  background: var(--color-sheet);
+  color: var(--color-ink);
+  border-radius: 2px;
+}
+
+/* Animations */
+@keyframes stamp-in {
+  0% { opacity: 0; transform: rotate(-2deg) scale(1.6); }
+  60% { opacity: 1; transform: rotate(-9deg) scale(0.94); }
+  100% { opacity: 0.92; transform: rotate(-7deg) scale(1); }
+}
+
+@keyframes tick {
+  0% { opacity: 0; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@utility animate-stamp-in {
+  animation: stamp-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.4s both;
+}
+
+@utility animate-tick {
+  animation: tick 0.4s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-stamp-in,
+  .animate-tick { animation: none !important; }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-form-blue);
+  outline-offset: 2px;
+}
