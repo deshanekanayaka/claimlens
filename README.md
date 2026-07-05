@@ -1,5 +1,7 @@
 # ClaimLens
 
+![ClaimLens landing page](docs/screenshots/landing-page.png)
+
 AI-powered damage claim triage. Upload photos and a claim description; a three-call LLM pipeline inspects the images, cross-checks them against the claim, and returns a structured verdict (supported, contradicted, or not enough information) with risk flags, severity, and image-grounded justification. Pipeline progress streams live to the client over SSE.
 
 Built on the claim-verification pipeline from the [HackerRank Orchestrate hackathon](https://github.com/deshanekanayaka/hackerrank-orchestrate-june26) (June 2026, ranked #234 of 1,773), refactored from a batch CSV script into a full product backend.
