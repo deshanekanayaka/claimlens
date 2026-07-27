@@ -1,8 +1,8 @@
 """Per-claim orchestrator + CALL 3 verdict.
 
 Wires the deterministic gates and the 3-call LLM split into one per-claim flow
-and produces the final 14-column prediction row (AGENTS.md §6, schema in
-``dataset/sample_claims.csv``):
+and produces the final 14-column prediction row (the schema carried over from
+the original batch pipeline's output CSV):
 
     adversarial pre-filter  ->  CALL 1 claim extraction
                             ->  CALL 2 image analysis
@@ -13,8 +13,8 @@ CALL 3 only decides ``supported`` vs ``contradicted`` (+ severity, justification
 and which candidate images the verdict rests on). The third status,
 ``not_enough_information``, is owned by a DETERMINISTIC short-circuit: when CALL
 2 reports ``evidence_standard_met`` is false the verdict is fixed without an LLM
-call (MY_RULES: deterministic over LLM-driven). This matches the labelled
-sample where ``evidence_standard_met=false`` always maps to
+call (design rule: deterministic over LLM-driven). This matches the labelled
+sample data the pipeline was built against, where ``evidence_standard_met=false`` always maps to
 ``not_enough_information`` / ``severity=unknown`` / ``supporting_image_ids=none``.
 
 FLAG ROUTING (decoy-filter): CALL 3's context must not contain quality flags
@@ -26,7 +26,7 @@ row's ``risk_flags`` keeps the full union of all flags for human reviewers.
 
 issue_type and object_part come from CALL 2 (images are the source of truth),
 NOT from CALL 1, and are deterministically coerced to the allowed vocabularies
-before output. Secrets are read from ``ANTHROPIC_API_KEY`` only (AGENTS.md §6.2).
+before output. Secrets are read from the ``ANTHROPIC_API_KEY`` env var only.
 """
 
 from __future__ import annotations
@@ -367,9 +367,6 @@ def _finalize_verdict(
     }
 
 
-StageCallback = "Callable[[str, dict[str, Any]], None]"
-
-
 def process_claim(
     row: dict[str, Any],
     history: dict[str, dict[str, str]],
@@ -379,7 +376,7 @@ def process_claim(
     """Run one claim through the full pipeline and return its 14-column row.
 
     Orchestrates the deterministic gates and the 3-call LLM split, then assembles
-    the prediction dict in the schema order of ``dataset/sample_claims.csv``.
+    the prediction dict in the original batch pipeline's 14-column schema order.
     ``row`` must already carry ``resolved_image_paths`` (added by the caller).
 
     ``on_stage`` is an optional callback ``(stage: str, detail: dict) -> None``
@@ -495,7 +492,7 @@ def process_claim(
         },
     )
 
-    # --- Assemble the 14-column prediction (sample_claims.csv order) --------
+    # --- Assemble the 14-column prediction row ------------------------------
     # Deterministically enforce allowed vocabularies for issue_type and object_part
     coerced_issue = _coerce_allowed(
         image_analysis.get("overall_issue_visible", "unknown"), ALLOWED_ISSUE_TYPES

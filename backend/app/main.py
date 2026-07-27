@@ -76,13 +76,18 @@ async def submit_claim(
         raise HTTPException(422, f"submit between 1 and {MAX_IMAGES_PER_CLAIM} images")
     for f in images:
         ext = Path(f.filename or "").suffix.lower()
-        if ext and ext not in ALLOWED_UPLOAD_EXTENSIONS:
-            raise HTTPException(422, f"unsupported image type: {ext}")
+        if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+            raise HTTPException(422, f"unsupported image type: {ext or '(no extension)'}")
+        # Early size check, when the client reported one. save_uploads enforces
+        # the same cap byte-by-byte for uploads with no known size.
         if f.size and f.size > MAX_IMAGE_BYTES:
             raise HTTPException(413, f"image {f.filename} exceeds {MAX_IMAGE_BYTES} bytes")
 
     claim_id = uuid.uuid4().hex[:12]
-    saved = service.save_uploads(claim_id, [(f.filename or "", f.file) for f in images])
+    try:
+        saved = service.save_uploads(claim_id, [(f.filename or "", f.file) for f in images])
+    except service.UploadTooLarge as exc:
+        raise HTTPException(413, str(exc))
     db.create_claim(
         claim_id,
         claim_object,

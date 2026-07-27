@@ -16,6 +16,7 @@ repo is unchanged.
 
 from __future__ import annotations
 
+import shutil
 import traceback
 from pathlib import Path
 from typing import Any, BinaryIO
@@ -24,7 +25,11 @@ from pipeline import process_claim
 from pipeline.utils import load_requirements
 
 from . import db
-from .config import EVIDENCE_REQUIREMENTS_CSV, UPLOADS_DIR
+from .config import EVIDENCE_REQUIREMENTS_CSV, MAX_IMAGE_BYTES, UPLOADS_DIR
+
+
+class UploadTooLarge(Exception):
+    """Raised when an uploaded file exceeds MAX_IMAGE_BYTES while being saved."""
 
 _requirements: dict[str, list[dict[str, str]]] | None = None
 
@@ -45,17 +50,32 @@ def save_uploads(claim_id: str, files: list[tuple[str, BinaryIO]]) -> list[Path]
     consistent with the pipeline's ``filename-stem = image_id`` convention. The
     original extension is kept only as a hint; the pipeline sniffs the real
     format from magic bytes anyway.
+
+    The per-image size cap is enforced here, while writing: the endpoint's
+    early check relies on the client-reported size, which can be absent.
+    On overflow the claim's whole upload folder is removed (no orphan files)
+    and :class:`UploadTooLarge` is raised for the endpoint to turn into a 413.
     """
     claim_dir = UPLOADS_DIR / claim_id
     claim_dir.mkdir(parents=True, exist_ok=True)
     saved: list[Path] = []
-    for i, (original_name, stream) in enumerate(files, start=1):
-        ext = Path(original_name or "").suffix.lower() or ".jpg"
-        dest = claim_dir / f"img_{i}{ext}"
-        with dest.open("wb") as out:
-            while chunk := stream.read(1024 * 1024):
-                out.write(chunk)
-        saved.append(dest)
+    try:
+        for i, (original_name, stream) in enumerate(files, start=1):
+            ext = Path(original_name or "").suffix.lower() or ".jpg"
+            dest = claim_dir / f"img_{i}{ext}"
+            written = 0
+            with dest.open("wb") as out:
+                while chunk := stream.read(1024 * 1024):
+                    written += len(chunk)
+                    if written > MAX_IMAGE_BYTES:
+                        raise UploadTooLarge(
+                            f"image {i} exceeds {MAX_IMAGE_BYTES} bytes"
+                        )
+                    out.write(chunk)
+            saved.append(dest)
+    except UploadTooLarge:
+        shutil.rmtree(claim_dir, ignore_errors=True)
+        raise
     return saved
 
 

@@ -4,13 +4,13 @@ Inspects the photographs submitted with a claim and reports what is visually
 verifiable: per-image findings, the overall visible part/issue, quality and
 authenticity flags, whether the evidence standard is met, and which images are
 candidate supports. It does NOT decide the final claim_status or severity -
-CALL 3 does that using this report (MY_RULES: 3-call split pipeline).
+CALL 3 does that using this report (the 3-call split: each call has one job).
 
 The images are the source of truth. The claim is passed only as context so the
 model knows which part to examine; the prompt forbids letting it override what
 is actually visible.
 
-Secrets are read from the ``ANTHROPIC_API_KEY`` env var only (AGENTS.md §6.2).
+Secrets are read from the ``ANTHROPIC_API_KEY`` env var only.
 """
 
 from __future__ import annotations
@@ -24,12 +24,12 @@ from typing import Any
 from .extractor import OBJECT_PARTS  # single source of truth for part lists
 
 # CALL 2 is the high-volume vision call; Sonnet is the cost/throughput choice
-# for perception (MY_RULES model split).
+# for perception (Opus is reserved for the reasoning calls, 1 and 3).
 MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 2048
 
 # Extension -> Anthropic media type. Unknown extensions default to JPEG (the
-# dataset is .jpg); a genuinely unreadable image surfaces as a loud API error.
+# common case); a genuinely unreadable image surfaces as a loud API error.
 _MEDIA_TYPES: dict[str, str] = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
@@ -312,9 +312,9 @@ def _is_webp(data: bytes) -> bool:
 def _prepare_image(path: str) -> tuple[str, str]:
     """Return (media_type, base64_data) ready to send to the Anthropic API.
 
-    Several images in this dataset carry a .jpg extension but are actually AVIF,
-    PNG, or WebP. Magic-byte detection overrides the extension so the API receives
-    the correct media type:
+    A file's extension cannot be trusted: images have shown up with a .jpg
+    extension while actually being AVIF, PNG, or WebP. Magic-byte detection
+    overrides the extension so the API receives the correct media type:
     - AVIF: not accepted by the API, converted to JPEG via Pillow.
     - PNG:  accepted natively, sent as image/png regardless of extension.
     - WebP: accepted natively, sent as image/webp regardless of extension.

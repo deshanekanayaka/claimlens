@@ -14,6 +14,8 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+import app.db as db
+import app.service as service
 import pipeline.agent as agent
 import pipeline.extractor as extractor
 import pipeline.image_analyzer as image_analyzer
@@ -27,12 +29,17 @@ _PNG = bytes.fromhex(
 
 
 @pytest.fixture()
-def client(monkeypatch):
+def client(monkeypatch, tmp_path):
+    # Isolate the app from real dev data: point the database and the uploads
+    # folder at a throwaway per-test directory (deleted by pytest afterwards).
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "test.db")
+    monkeypatch.setattr(service, "UPLOADS_DIR", tmp_path / "uploads")
+
     monkeypatch.setattr(
         extractor,
         "extract_claim",
         lambda claim, obj: {
-            "claimed_parts": [{"part": "door", "issue": "dent"}],
+            "claimed_parts": [{"object_part": "door", "issue_type": "dent"}],
             "primary_part": "door",
             "primary_issue": "dent",
             "claim_summary": "dent on driver door",
@@ -110,3 +117,22 @@ def test_validation_rejects_bad_object(client):
         files=[("images", ("p.png", io.BytesIO(_PNG), "image/png"))],
     )
     assert resp.status_code == 422
+
+
+def test_validation_rejects_file_without_extension(client):
+    resp = client.post(
+        "/api/claims",
+        data={"claim_object": "car", "user_claim": "dent on the door"},
+        files=[("images", ("photo", io.BytesIO(_PNG), "image/png"))],
+    )
+    assert resp.status_code == 422
+
+
+def test_validation_rejects_oversized_image(client):
+    nine_mb = io.BytesIO(b"\x00" * (9 * 1024 * 1024))  # cap is 8 MB
+    resp = client.post(
+        "/api/claims",
+        data={"claim_object": "car", "user_claim": "dent on the door"},
+        files=[("images", ("big.png", nine_mb, "image/png"))],
+    )
+    assert resp.status_code == 413

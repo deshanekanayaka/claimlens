@@ -3,12 +3,12 @@
 Turns the raw claim conversation / transcript into a structured claim object.
 For compound claims, every claimed part is captured in ``claimed_parts`` (used
 as context for CALL 2 image analysis) while ``primary_part`` / ``primary_issue``
-hold just the main one for the output columns (MY_RULES).
+hold just the main one for the output columns.
 
 ``issue_family`` is NOT produced here; it is derived deterministically from the
 primary issue downstream via ``escalation.get_issue_family``.
 
-Secrets are read from the ``ANTHROPIC_API_KEY`` env var only (AGENTS.md §6.2).
+Secrets are read from the ``ANTHROPIC_API_KEY`` env var only.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import time
 from typing import Any
 
 # CALL 1 uses the stronger reasoning model: ambiguous, multilingual transcripts
-# and multi-part synthesis (MY_RULES model split).
+# and multi-part synthesis need reasoning, not perception.
 MODEL = "claude-opus-4-6"
 MAX_TOKENS = 1024
 

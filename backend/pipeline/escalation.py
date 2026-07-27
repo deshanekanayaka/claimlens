@@ -1,11 +1,11 @@
 """Deterministic gates: adversarial pre-filter, history lookup, evidence gate.
 
-All rule-based, no LLM (MY_RULES: deterministic over LLM-driven):
+All rule-based, no LLM (design rule: deterministic over LLM-driven):
 
 * Adversarial pre-filter — scans the transcript and image-analysis signals for
   prompt injection / coercive language before any LLM call is trusted.
-* User history lookup — copies the ``history_flags`` column from
-  ``user_history.csv`` directly into ``risk_flags``.
+* User history lookup — copies the caller-provided history flags directly
+  into ``risk_flags``.
 * Evidence requirement gate — maps ``issue_family`` to the minimum image
   evidence in ``evidence_requirements.csv`` and flags shortfalls.
 """
@@ -44,20 +44,23 @@ def adversarial_prefilter(user_claim: str) -> list[str]:
 
 
 # --- SECTION 2: User history lookup ------------------------------------------
-# The ``history_flags`` column is copied verbatim into risk_flags (MY_RULES).
+# The caller passes a history dict keyed by user_id; each row's history_flags
+# value is copied verbatim into risk_flags.
 # Values: "none" | "user_history_risk" | "manual_review_required"
-# Multi-flag rows are semicolon-separated in the CSV, e.g.
+# Multi-flag rows are semicolon-separated, e.g.
 # "user_history_risk;manual_review_required".
+# Web-submitted claims pass an empty history dict (no accounts yet), so these
+# flags only fire when a caller supplies real history data.
 
 HISTORY_FLAGS_FIELD = "history_flags"
 NO_FLAG_VALUE = "none"
 
 
 def get_history_flags(user_id: str, history: dict[str, dict[str, str]]) -> list[str]:
-    """Return the user's risk flags copied directly from ``user_history.csv``.
+    """Return the user's risk flags from the caller-provided history dict.
 
     Deterministic, no LLM. Returns ``[]`` for unknown users or users whose
-    ``history_flags`` column is ``"none"`` or blank.
+    ``history_flags`` value is ``"none"`` or blank.
     """
     row = history.get(user_id)
     if not row:
@@ -69,8 +72,8 @@ def get_history_flags(user_id: str, history: dict[str, dict[str, str]]) -> list[
 
 
 # --- SECTION 3: Evidence requirement lookup ----------------------------------
-# requirements dict is pre-merged by main.py: each claim_object key already
-# includes the "all"-scoped rows. This function is a pure lookup + fallback.
+# requirements dict is pre-merged by utils.load_requirements: each claim_object
+# key already includes the "all"-scoped rows. Pure lookup + fallback.
 
 ALL_OBJECT_KEY = "all"
 
@@ -82,9 +85,9 @@ def get_evidence_requirement(
     """Return all evidence requirement rows applicable to ``claim_object``.
 
     Deterministic, no LLM. The caller passes the pre-merged requirements dict
-    from main.py, so both general ("all") and object-specific rows are already
-    combined under each key. Falls back to just the "all" rows for unrecognised
-    objects so no claim is evaluated without any standard.
+    from ``utils.load_requirements``, so both general ("all") and object-specific
+    rows are already combined under each key. Falls back to just the "all" rows
+    for unrecognised objects so no claim is evaluated without any standard.
     """
     return requirements.get(claim_object, requirements.get(ALL_OBJECT_KEY, []))
 

@@ -6,6 +6,6 @@ refactored here into an importable package consumed by the FastAPI backend.
 """
 
 from .agent import process_claim
-from .utils import load_requirements, load_user_history
+from .utils import load_requirements
 
-__all__ = ["process_claim", "load_requirements", "load_user_history"]
+__all__ = ["process_claim", "load_requirements"]
